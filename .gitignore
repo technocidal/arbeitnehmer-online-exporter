@@ -1,0 +1,7 @@
+# Downloaded payslip PDFs — never commit personal financial documents
+payslips/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
