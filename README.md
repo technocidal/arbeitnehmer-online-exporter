@@ -11,14 +11,14 @@ When multiple versions of the same month exist (corrections/amendments), all are
 ## Prerequisites
 
 - macOS with Python 3.10+
-- Chromium (installed via Playwright)
+- WebKit (installed via Playwright)
 - Credentials for your DATEV account with authenticator-app 2FA
 
 ## Setup
 
 ```bash
 pip install -r requirements.txt
-playwright install chromium
+playwright install webkit
 ```
 
 ## Credentials
@@ -67,3 +67,7 @@ options:
 
 Downloaded PDFs are saved as e.g. `Brutto-Netto-Abrechnung-Dezember-2025.pdf`. For duplicate
 document names, a short UUID suffix is appended (`..._ab12cd34.pdf`).
+
+<a href="https://0rwx.com">
+    <img src="https://0rwx.com/static/AI-W.png" width="44"/>
+</a>
