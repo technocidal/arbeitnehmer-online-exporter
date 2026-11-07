@@ -169,18 +169,10 @@ async def run(username: str, password: str, download_dir: Path, headless: bool =
     print(f"[Downloader] PDFs will be saved to: {download_dir}")
 
     async with async_playwright() as p:
-        browser = await p.chromium.launch(
-            headless=headless,
-            args=["--disable-blink-features=AutomationControlled"],
-        )
+        browser = await p.webkit.launch(headless=headless)
         context = await browser.new_context(
             viewport={"width": 1280, "height": 900},
             accept_downloads=True,
-            user_agent=(
-                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-                "AppleWebKit/537.36 (KHTML, like Gecko) "
-                "Chrome/124.0.0.0 Safari/537.36"
-            ),
         )
         page = await context.new_page()
 

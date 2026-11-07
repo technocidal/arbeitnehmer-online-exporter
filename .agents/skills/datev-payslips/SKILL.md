@@ -43,7 +43,7 @@ payslips/                 Downloaded PDFs (git-ignored)
 ```bash
 # First-time setup
 pip install -r requirements.txt
-playwright install chromium
+playwright install webkit
 
 # Run (credentials from .env or 1Password defaults)
 python3 download_payslips.py
@@ -51,6 +51,27 @@ python3 download_payslips.py
 # Options
 python3 download_payslips.py --headless --output-dir ~/Documents/Payslips
 ```
+
+## Playwright install failures (workaround)
+
+`playwright install webkit` sometimes fails with a 30-second download timeout
+(`Request to ... timed out after 30000ms` / `Download failure, code=1`), even
+when the download URL itself is reachable. The browser can then be installed
+manually into the Playwright cache:
+
+1. Get the exact URL and target directory from the error message, e.g.
+   `Executable doesn't exist at ~/Library/Caches/ms-playwright/webkit-2359/pw_run.sh`
+   → download `.../builds/webkit/2359/webkit-mac-26-arm64.zip`
+2. Download with curl (no 30s limit, resumes/retries):
+   ```bash
+   curl -L --retry 3 -o /tmp/webkit.zip "<url-from-error>"
+   ```
+3. Unzip directly into the missing cache directory:
+   ```bash
+   mkdir -p ~/Library/Caches/ms-playwright/webkit-2359
+   unzip -o /tmp/webkit.zip -d ~/Library/Caches/ms-playwright/webkit-2359
+   ```
+4. Verify `pw_run.sh` exists in that directory, then launch the script normally.
 
 ## Duplicate document handling
 
