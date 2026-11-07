@@ -9,7 +9,6 @@ Auth flow (DATEV-Konto with authenticator app):
   3. Script enters email + password (from env / .env file / 1Password)
   4. Script generates the TOTP code automatically
   5. Script downloads all payslip PDFs to ./payslips/ (git-ignored)
-  6. Extracts and totals all "ESPP net deduction" line items
 
 Credentials are resolved from environment variables (or a .env file).
 If a value looks like a 1Password secret reference (op://vault/item/field)
@@ -32,7 +31,6 @@ import sys
 import re
 from pathlib import Path
 
-import pdfplumber
 from playwright.async_api import async_playwright, TimeoutError as PlaywrightTimeoutError
 
 # ---------------------------------------------------------------------------
@@ -560,9 +558,6 @@ async def download_all_payslips(page, context, download_dir: Path):
 
     print(f"\n[Downloader] {downloaded} downloaded, {skipped} already existed.")
 
-    # Extract and report ESPP net deduction totals
-    extract_espp_totals(download_dir)
-
 
 async def collect_pdf_links(page) -> list[dict]:
     """
@@ -650,120 +645,6 @@ async def fetch_pdf(context, url: str, dest: Path) -> bool:
     except Exception as e:
         print(f"    [WARN] Error fetching {url}: {e}")
     return False
-
-
-def parse_pdf_text(pdf_path: Path) -> str:
-    """Return the full extracted text of a PDF, or empty string on error."""
-    try:
-        with pdfplumber.open(pdf_path) as pdf:
-            return "\n".join(page.extract_text() or "" for page in pdf.pages)
-    except Exception as e:
-        print(f"[ESPP] Could not read {pdf_path.name}: {e}")
-        return ""
-
-
-# Matches the issuance date in DATEV payslip headers, e.g.:
-#   'Abrechnung der Brutto/Netto-Bezüge für Dezember 2025 23.01.2026 Blatt : 1'
-# Capture group 1 = DD.MM.YYYY issuance date (the second date on that line).
-_ISSUE_DATE_RE = re.compile(
-    r"B\s*r\s*u\s*t\s*t\s*o\s*/\s*N\s*e\s*t\s*t\s*o.*?"   # header marker
-    r"(\d{2}\.\d{2}\.\d{4})",                                # issuance date
-    re.IGNORECASE | re.DOTALL,
-)
-
-_AMOUNT_RE = re.compile(r"ESPP net deduction\s+([\d.,]+)-?", re.IGNORECASE)
-
-
-def extract_espp_totals(download_dir: Path) -> None:
-    """
-    Scan all Brutto-Netto PDFs in download_dir for "ESPP net deduction" lines.
-
-    When multiple versions of the same payslip month exist (duplicate base
-    filenames with UUID suffixes), only the version with the latest issuance
-    date is included in the total — older versions are listed but marked as
-    superseded.
-
-    The line format in DATEV payslips looks like:
-      '... 9022 ESPP net deduction 445,83-'
-    Amounts use German decimal notation (comma = decimal separator).
-    """
-    from datetime import datetime
-
-    # Collect all PDFs that contain an ESPP deduction, recording their
-    # issuance date so we can pick the latest per payslip month.
-    # key: (payslip_month_str, base_stem_without_uuid)  e.g. "Dezember 2025"
-    # value: list of (issuance_date, filename, amount)
-    # We use the base filename stem (strip trailing _XXXXXXXX UUID suffix) as
-    # the grouping key so all versions of the same month cluster together.
-    _UUID_SUFFIX_RE = re.compile(r"_[0-9a-f]{8}$", re.IGNORECASE)
-
-    # (group_key) -> list of (issue_date, pdf_path, amount)
-    groups: dict[str, list[tuple[datetime, Path, float]]] = {}
-
-    for pdf_path in sorted(download_dir.glob("*.pdf")):
-        text = parse_pdf_text(pdf_path)
-        if not text:
-            continue
-
-        matches = _AMOUNT_RE.findall(text)
-        if not matches:
-            continue
-
-        # Parse amount (use the first match; each payslip has at most one)
-        raw = matches[0]
-        normalised = raw.replace(".", "").replace(",", ".")
-        try:
-            amount = float(normalised)
-        except ValueError:
-            print(f"[ESPP] Could not parse amount '{raw}' in {pdf_path.name}")
-            continue
-
-        # Extract issuance date from the PDF header text
-        m = _ISSUE_DATE_RE.search(text)
-        if m:
-            try:
-                issue_date = datetime.strptime(m.group(1), "%d.%m.%Y")
-            except ValueError:
-                issue_date = datetime.min
-        else:
-            issue_date = datetime.min
-
-        # Group key: base stem without the UUID suffix
-        stem = _UUID_SUFFIX_RE.sub("", pdf_path.stem)
-        groups.setdefault(stem, []).append((issue_date, pdf_path, amount))
-
-    if not groups:
-        print("\n[ESPP] No 'ESPP net deduction' entries found in any PDF.")
-        return
-
-    print("\n" + "=" * 70)
-    print("  ESPP net deduction amounts  (latest version per payslip month)")
-    print("=" * 70)
-
-    total = 0.0
-    # Sort groups by the latest issuance date in each group (chronological)
-    def group_sort_key(item):
-        _, entries = item
-        return max(e[0] for e in entries)
-
-    for stem, entries in sorted(groups.items(), key=group_sort_key):
-        entries.sort(key=lambda e: e[0])  # oldest first within group
-        latest_date, latest_path, latest_amount = entries[-1]
-
-        if len(entries) > 1:
-            # Print superseded versions indented and marked
-            for issue_date, pdf_path, amount in entries[:-1]:
-                label = f"  (superseded) {pdf_path.name}"
-                print(f"  {label:<65}  {amount:>8.2f} EUR  [{issue_date.strftime('%d.%m.%Y')}]")
-
-        date_str = latest_date.strftime("%d.%m.%Y") if latest_date.year > 1 else "unknown"
-        label = latest_path.name
-        print(f"  {label:<65}  {latest_amount:>8.2f} EUR  [{date_str}]")
-        total += latest_amount
-
-    print("-" * 70)
-    print(f"  {'TOTAL':<65}  {total:>8.2f} EUR")
-    print("=" * 70)
 
 
 # ---------------------------------------------------------------------------

@@ -1,19 +1,19 @@
 ---
 name: datev-payslips
-description: Download DATEV Arbeitnehmer Online payslips and analyse ESPP deductions using download_payslips.py
+description: Download DATEV Arbeitnehmer Online payslips using download_payslips.py
 license: MIT
 compatibility: opencode
 ---
 
 ## What this skill does
 
-This repo contains `download_payslips.py` — a Playwright-based script that logs into the DATEV Arbeitnehmer Online portal, downloads all payslip PDFs, and reports ESPP net deduction totals.
+This repo contains `download_payslips.py` — a Playwright-based script that logs into the DATEV Arbeitnehmer Online portal and downloads all payslip PDFs.
 
 ## Project layout
 
 ```
 download_payslips.py      Main script — all logic lives here
-requirements.txt          Python dependencies (playwright, pdfplumber)
+requirements.txt          Python dependencies (playwright)
 .env.example              Template for credentials
 payslips/                 Downloaded PDFs (git-ignored)
 ```
@@ -26,11 +26,9 @@ payslips/                 Downloaded PDFs (git-ignored)
 | `resolve_secret(value, label)` | Resolves plain values or `op://` 1Password references |
 | `get_credentials()` | Returns `(username, password)` from env / 1Password |
 | `get_totp()` | Returns live 6-digit TOTP via `op item get --otp` |
-| `run()` | Main async entry point: login → navigate → download → analyse |
+| `run()` | Main async entry point: login → navigate → download |
 | `collect_pdf_links(page)` | Scrapes PDF `<a href>` links; appends UUID suffix to deduplicate |
 | `fetch_pdf(context, url, dest)` | Downloads PDF using `context.request.get()` (shares auth cookies) |
-| `extract_espp_totals(dir)` | Parses PDFs with pdfplumber; groups versions by month; totals latest only |
-| `parse_pdf_text(path)` | Extracts raw text from a PDF via pdfplumber |
 
 ## Credential resolution order
 
@@ -58,7 +56,6 @@ python3 download_payslips.py --headless --output-dir ~/Documents/Payslips
 
 DATEV issues amended payslips for the same month with distinct document UUIDs.
 - All versions are downloaded (UUID suffix appended to filename for duplicates)
-- `extract_espp_totals()` reads the issuance date from the PDF header and counts only the **latest version** per month in the total
 
 ## Important implementation notes
 

@@ -210,3 +210,6 @@ pyrightconfig.json
 
 # Downloaded payslip PDFs — never commit personal financial documents
 payslips/
+.datev_session.json
+.last_run_timestamp
+tax_class_analysis.py

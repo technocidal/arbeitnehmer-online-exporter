@@ -6,9 +6,7 @@ Downloads all payslip PDFs from [apps.datev.de/ano/en](https://apps.datev.de/ano
 - Lohnsteuerbescheinigungen
 - Meldebescheinigungen zur Sozialversicherung
 
-When multiple versions of the same month exist (corrections/amendments), all are downloaded but only the latest is used for analysis.
-
-After downloading, the script extracts and totals all **ESPP net deduction** line items across all payslips.
+When multiple versions of the same month exist (corrections/amendments), all are downloaded (UUID suffix appended for duplicates).
 
 ## Prerequisites
 
@@ -67,17 +65,5 @@ options:
 
 ## Output
 
-```
-======================================================================
-  ESPP net deduction amounts  (latest version per payslip month)
-======================================================================
-  Brutto-Netto-Abrechnung-Oktober-2025.pdf                            123.45 EUR  [25.10.2025]
-  Brutto-Netto-Abrechnung-November-2025.pdf                           123.45 EUR  [25.11.2025]
-    (superseded) Brutto-Netto-Abrechnung-Dezember-2025_ab12cd34.pdf   123.45 EUR  [19.12.2025]
-    (superseded) Brutto-Netto-Abrechnung-Dezember-2025_ef56gh78.pdf   123.45 EUR  [08.01.2026]
-  Brutto-Netto-Abrechnung-Dezember-2025.pdf                           123.45 EUR  [23.01.2026]
-  Brutto-Netto-Abrechnung-Januar-2026.pdf                             123.45 EUR  [27.01.2026]
-----------------------------------------------------------------------
-  TOTAL                                                               740.70 EUR
-======================================================================
-```
+Downloaded PDFs are saved as e.g. `Brutto-Netto-Abrechnung-Dezember-2025.pdf`. For duplicate
+document names, a short UUID suffix is appended (`..._ab12cd34.pdf`).
